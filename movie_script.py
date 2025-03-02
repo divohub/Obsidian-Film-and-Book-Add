@@ -1,6 +1,9 @@
+import sys
+import io
 import requests
 import pyperclip
 import os
+import re
 from deep_translator import GoogleTranslator
 
 
@@ -10,11 +13,19 @@ OMDB_API_KEY = "5839c8e0"  # Вставь сюда свой API-ключ для 
 
 
 
+sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
+
 if not os.path.exists(OBSIDIAN_VAULT_PATH):
     print(f"❌ Ошибка: Путь {OBSIDIAN_VAULT_PATH} не существует.")
 else:
     print(f"✅ Путь {OBSIDIAN_VAULT_PATH} найден.")
 
+
+
+def extract_year(text):
+    # Ищем год в формате YYYY
+    match = re.search(r"\b(19\d{2}|20\d{2})\b", text)
+    return match.group(0) if match else None
 
 
 def translate_to_english(text):
@@ -26,8 +37,10 @@ def translate_to_english(text):
         return None
 
 # Функция для поиска фильма
-def search_movie(title):
+def search_movie(title, year=None):
     url = f"http://www.omdbapi.com/?t={title}&apikey={OMDB_API_KEY}"
+    if year:
+        url += f"&y={year}"
     response = requests.get(url)
     data = response.json()
     return data if data.get("Response") == "True" else None
@@ -38,7 +51,11 @@ def is_russian(text):
     return any('\u0400' <= char <= '\u04FF' for char in text)
 
 # Получаем название из буфера обмена
-title = pyperclip.paste().strip()
+clipboard_text = pyperclip.paste().strip()
+
+year = extract_year(clipboard_text)
+
+title = re.sub(r"\b(19\d{2}|20\d{2})\b", "", clipboard_text).strip()
 
 
 # Функция для преобразования жанров в ссылки
@@ -55,7 +72,7 @@ def format_genres(genres):
 # Проверяем, на каком языке название
 if is_russian(title):
     print("🔍 Название на русском. Пробуем найти фильм по оригинальному названию...")
-    data = search_movie(title)
+    data = search_movie(title, year)
 
     # Если фильм не найден, пробуем перевести и поискать снова
     if not data:
@@ -63,17 +80,24 @@ if is_russian(title):
         translated_title = translate_to_english(title)
         if translated_title:
             print(f"Перевод названия: {translated_title}")
-            data = search_movie(translated_title)
+            data = search_movie(translated_title, year)
 else:
     print("🔍 Название на английском. Пробуем найти фильм...")
-    data = search_movie(title)
+    data = search_movie(title, year)
 
 # Если данные найдены, создаём Markdown-файл
 if data:
     # Форматируем жанры в ссылки
     genres = format_genres(data.get("Genre", ""))
 
+      # Добавляем постер, если он есть
+    poster_url = data.get("Poster", "")
+    poster_md = f"![Постер]({poster_url})" if poster_url else ""
+
     md_template = f"""---
+
+
+
 title: {data['Title']}
 year: {data['Year']}
 director: {data['Director']}
@@ -84,12 +108,21 @@ type: movie
 
 # {data['Title']}
 
+
+{poster_md}
+
 **Год:** [[{data['Year']}]]  
 **Режиссёр:** [[{data['Director']}]]  
 **Жанр:** {genres}  
 
 ## Описание
 {data['Plot']}
+
+
+## Refrences
+
+[[Рекомендации]]
+
 """
 
     # Сохраняем файл в папке Obsidian
