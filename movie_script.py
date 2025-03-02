@@ -1,11 +1,12 @@
 import requests
 import pyperclip
 import os
-from googletrans import Translator
+from deep_translator import GoogleTranslator
+
 
 # Конфигурация
 OBSIDIAN_VAULT_PATH = r"C:\Users\user\iCloudDrive\iCloud~md~obsidian\divo\30 - Source Material\37 Films"  # Укажи путь к своей папке Obsidian
-OMDB_API_KEY = "http://www.omdbapi.com/?i=tt3896198&apikey=5839c8e0"  # Вставь сюда свой API-ключ для OMDb
+OMDB_API_KEY = "5839c8e0"  # Вставь сюда свой API-ключ для OMDb
 
 
 
@@ -16,7 +17,6 @@ else:
 
 
 
-# Функция для перевода на английский
 def translate_to_english(text):
     try:
         translation = GoogleTranslator(source='auto', target='en').translate(text)
@@ -32,25 +32,47 @@ def search_movie(title):
     data = response.json()
     return data if data.get("Response") == "True" else None
 
+# Функция для проверки языка текста
+def is_russian(text):
+    # Проверяем, есть ли в тексте кириллица
+    return any('\u0400' <= char <= '\u04FF' for char in text)
+
 # Получаем название из буфера обмена
 title = pyperclip.paste().strip()
 
-# Проверяем, есть ли в названии кириллица
-is_russian = any('\u0400' <= char <= '\u04FF' for char in title)
 
-# Сначала пробуем найти фильм по оригинальному названию
-data = search_movie(title)
+# Функция для преобразования жанров в ссылки
+def format_genres(genres):
+    if not genres:
+        return ""
+    # Разделяем жанры по запятым и убираем лишние пробелы
+    genre_list = [genre.strip() for genre in genres.split(",")]
+    # Преобразуем каждый жанр в [[Жанр]]
+    return " ".join(f"[[{genre}]]" for genre in genre_list)
 
-# Если фильм не найден и название на русском, пробуем перевести и поискать снова
-if not data and is_russian:
-    print("🔍 Фильм не найден. Пробуем перевести название...")
-    translated_title = translate_to_english(title)
-    if translated_title:
-        print(f"Перевод названия: {translated_title}")
-        data = search_movie(translated_title)
+
+
+# Проверяем, на каком языке название
+if is_russian(title):
+    print("🔍 Название на русском. Пробуем найти фильм по оригинальному названию...")
+    data = search_movie(title)
+
+    # Если фильм не найден, пробуем перевести и поискать снова
+    if not data:
+        print("🔍 Фильм не найден. Пробуем перевести название на английский...")
+        translated_title = translate_to_english(title)
+        if translated_title:
+            print(f"Перевод названия: {translated_title}")
+            data = search_movie(translated_title)
+else:
+    print("🔍 Название на английском. Пробуем найти фильм...")
+    data = search_movie(title)
 
 # Если данные найдены, создаём Markdown-файл
 if data:
+    # Форматируем жанры в ссылки
+    genres = format_genres(data.get("Genre", ""))
+
     md_template = f"""---
 title: {data['Title']}
 year: {data['Year']}
@@ -62,9 +84,9 @@ type: movie
 
 # {data['Title']}
 
-**Год:** {data['Year']}  
-**Режиссёр:** {data['Director']}  
-**Жанр:** {data['Genre']}  
+**Год:** [[{data['Year']}]]  
+**Режиссёр:** [[{data['Director']}]]  
+**Жанр:** {genres}  
 
 ## Описание
 {data['Plot']}
