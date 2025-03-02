@@ -5,6 +5,7 @@ import pyperclip
 import os
 import re
 from deep_translator import GoogleTranslator
+from transliterate import translit
 
 
 # Конфигурация
@@ -73,6 +74,12 @@ def format_genres(genres):
 if is_russian(title):
     print("🔍 Название на русском. Пробуем найти фильм по оригинальному названию...")
     data = search_movie(title, year)
+
+    if not data:
+        print("🔍 Фильм не найден. Пробуем транслитерировать название...")
+        transliterated_title = translit(title, 'ru', reversed=True)  # Транслитерация
+        print(f"Транслитерированное название: {transliterated_title}")
+        data = search_movie(transliterated_title, year)
 
     # Если фильм не найден, пробуем перевести и поискать снова
     if not data:
