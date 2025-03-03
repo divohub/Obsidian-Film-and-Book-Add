@@ -1,4 +1,5 @@
 import sys
+from dotenv import load_dotenv
 import io
 import requests
 import pyperclip
@@ -8,27 +9,20 @@ from deep_translator import GoogleTranslator
 from transliterate import translit
 
 
-# Конфигурация
-OBSIDIAN_VAULT_PATH = r"C:\Users\user\iCloudDrive\iCloud~md~obsidian\divo\30 - Source Material\37 Films"  # Укажи путь к своей папке Obsidian
-OMDB_API_KEY = "5839c8e0"  # Вставь сюда свой API-ключ для OMDb
+load_dotenv()
 
+
+# Конфигурация
+OBSIDIAN_VAULT_PATH = os.getenv("OBSIDIAN_VAULT_PATH_MOVIE")  # Укажи путь к своей папке Obsidian .env
+TMDB_API_KEY = os.getenv("TMDB_API_KEY")  # Вставь свой API-ключ для TMDb в .env
+
+print(TMDB_API_KEY)
 
 
 sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
 
-if not os.path.exists(OBSIDIAN_VAULT_PATH):
-    print(f"❌ Ошибка: Путь {OBSIDIAN_VAULT_PATH} не существует.")
-else:
-    print(f"✅ Путь {OBSIDIAN_VAULT_PATH} найден.")
 
-
-
-def extract_year(text):
-    # Ищем год в формате YYYY
-    match = re.search(r"\b(19\d{2}|20\d{2})\b", text)
-    return match.group(0) if match else None
-
-
+# Функция для перевода на английский
 def translate_to_english(text):
     try:
         translation = GoogleTranslator(source='auto', target='en').translate(text)
@@ -37,103 +31,141 @@ def translate_to_english(text):
         print(f"❌ Ошибка перевода: {e}")
         return None
 
-# Функция для поиска фильма
-def search_movie(title, year=None):
-    url = f"http://www.omdbapi.com/?t={title}&apikey={OMDB_API_KEY}"
+# Функция для поиска фильма в TMDb
+def search_tmdb(title, year=None):
+    url = f"https://api.themoviedb.org/3/search/movie?api_key={TMDB_API_KEY}&query={title}&language=ru-RU"
     if year:
-        url += f"&y={year}"
+        url += f"&year={year}"
     response = requests.get(url)
     data = response.json()
-    return data if data.get("Response") == "True" else None
+    if data.get("results"):
+        return data["results"][0]  # Возвращаем первый результат
+    return None
+
+# Функция для получения деталей фильма по ID
+def get_movie_details(movie_id):
+    url = f"https://api.themoviedb.org/3/movie/{movie_id}?api_key={TMDB_API_KEY}&language=ru-RU"
+    response = requests.get(url)
+    return response.json()
+
+# Функция для получения команды фильма (режиссёры, актёры и т.д.)
+def get_movie_credits(movie_id):
+    url = f"https://api.themoviedb.org/3/movie/{movie_id}/credits?api_key={TMDB_API_KEY}"
+    response = requests.get(url)
+    return response.json()
 
 # Функция для проверки языка текста
 def is_russian(text):
     # Проверяем, есть ли в тексте кириллица
     return any('\u0400' <= char <= '\u04FF' for char in text)
 
-# Получаем название из буфера обмена
-clipboard_text = pyperclip.paste().strip()
+# Функция для поиска года в тексте
+def extract_year(text):
+    # Ищем год в формате YYYY
+    match = re.search(r"\b(19\d{2}|20\d{2})\b", text)
+    return match.group(0) if match else None
 
-year = extract_year(clipboard_text)
-
-title = re.sub(r"\b(19\d{2}|20\d{2})\b", "", clipboard_text).strip()
-
+# Функция для преобразования списка в ссылки
+def format_as_links(items):
+    if not items:
+        return ""
+    # Преобразуем каждый элемент в [[Элемент]]
+    return " ".join(f"[[{item}]]" for item in items)
 
 # Функция для преобразования жанров в ссылки
 def format_genres(genres):
     if not genres:
         return ""
-    # Разделяем жанры по запятым и убираем лишние пробелы
-    genre_list = [genre.strip() for genre in genres.split(",")]
     # Преобразуем каждый жанр в [[Жанр]]
-    return " ".join(f"[[{genre}]]" for genre in genre_list)
+    return " ".join(f"[[{genre['name']}]]" for genre in genres)
 
+# Получаем текст из буфера обмена
+clipboard_text = pyperclip.paste().strip()
 
+# Извлекаем год из буфера обмена
+year = extract_year(clipboard_text)
+
+# Извлекаем название (убираем год, если он есть)
+title = re.sub(r"\b(19\d{2}|20\d{2})\b", "", clipboard_text).strip()
 
 # Проверяем, на каком языке название
 if is_russian(title):
     print("🔍 Название на русском. Пробуем найти фильм по оригинальному названию...")
-    data = search_movie(title, year)
+    data = search_tmdb(title, year)
 
+    # Если фильм не найден, пробуем транслитерировать и поискать снова
     if not data:
         print("🔍 Фильм не найден. Пробуем транслитерировать название...")
         transliterated_title = translit(title, 'ru', reversed=True)  # Транслитерация
         print(f"Транслитерированное название: {transliterated_title}")
-        data = search_movie(transliterated_title, year)
+        data = search_tmdb(transliterated_title, year)
 
-    # Если фильм не найден, пробуем перевести и поискать снова
-    if not data:
-        print("🔍 Фильм не найден. Пробуем перевести название на английский...")
-        translated_title = translate_to_english(title)
-        if translated_title:
-            print(f"Перевод названия: {translated_title}")
-            data = search_movie(translated_title, year)
+        # Если фильм не найден, пробуем перевести и поискать снова
+        if not data:
+            print("🔍 Фильм не найден. Пробуем перевести название на английский...")
+            translated_title = translate_to_english(title)
+            if translated_title:
+                print(f"Перевод названия: {translated_title}")
+                data = search_tmdb(translated_title, year)
 else:
     print("🔍 Название на английском. Пробуем найти фильм...")
-    data = search_movie(title, year)
+    data = search_tmdb(title, year)
 
 # Если данные найдены, создаём Markdown-файл
 if data:
-    # Форматируем жанры в ссылки
-    genres = format_genres(data.get("Genre", ""))
+    # Получаем детали фильма по ID
+    movie_details = get_movie_details(data['id'])
+    
+    # Получаем команду фильма (режиссёры, актёры и т.д.)
+    movie_credits = get_movie_credits(data['id'])
+    
+    # Извлекаем режиссёров
+    directors = [crew['name'] for crew in movie_credits.get('crew', []) if crew['job'] == 'Director']
+    
+    # Извлекаем пять главных актёров
+    top_actors = [actor['name'] for actor in movie_credits.get('cast', [])[:5]]
+    
+    # Извлекаем данные
+    title = movie_details.get("title", "Без названия")
+    year = movie_details.get("release_date", "Год неизвестен")[:4] if movie_details.get("release_date") else "Год неизвестен"
+    description = movie_details.get("overview", "Описание отсутствует.")
+    genres = movie_details.get("genres", [])
+    poster_path = movie_details.get("poster_path", "")
+    poster_url = f"https://image.tmdb.org/t/p/original{poster_path}" if poster_path else ""
 
-      # Добавляем постер, если он есть
-    poster_url = data.get("Poster", "")
+    # Форматируем жанры, режиссёров и актёров в ссылки
+    genres_links = format_genres(genres)
+    directors_links = format_as_links(directors)
+    actors_links = format_as_links(top_actors)
+
+    # Добавляем обложку, если она есть
     poster_md = f"![Постер]({poster_url})" if poster_url else ""
 
     md_template = f"""---
-
-
-
-title: {data['Title']}
-year: {data['Year']}
-director: {data['Director']}
-genre: {data['Genre']}
-description: {data['Plot']}
+title: {title}
+year: {year}
+director: {", ".join(directors) if directors else "Режиссёр неизвестен"}
+genre: {", ".join(genre['name'] for genre in genres) if genres else "Жанр неизвестен"}
+description: {description}
 type: movie
+cover: {poster_url}
 ---
 
-# {data['Title']}
-
+# {title}
 
 {poster_md}
 
-**Год:** [[{data['Year']}]]  
-**Режиссёр:** [[{data['Director']}]]  
-**Жанр:** {genres}  
+**Год:** [[{year}]]  
+**Режиссёр:** {directors_links}  
+**Актёры:** {actors_links}  
+**Жанр:** {genres_links}  
 
 ## Описание
-{data['Plot']}
-
-
-## Refrences
-
-[[Рекомендации]]
-
+{description}
 """
 
     # Сохраняем файл в папке Obsidian
-    file_name = f"{data['Title']}.md"
+    file_name = f"{title}.md"
     file_path = os.path.join(OBSIDIAN_VAULT_PATH, file_name)
     
     with open(file_path, "w", encoding="utf-8") as f:

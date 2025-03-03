@@ -1,13 +1,22 @@
 import requests
+from dotenv import load_dotenv
 import pyperclip
 import os
 from deep_translator import GoogleTranslator
+import sys
+import io
+
+
+load_dotenv()
 
 # Конфигурация
-OBSIDIAN_VAULT_PATH = r"C:\Users\user\iCloudDrive\iCloud~md~obsidian\divo\30 - Source Material\36 Books"  # Укажи путь к своей папке Obsidian
-GOOGLE_BOOKS_API_KEY = "AIzaSyC4yy4a3EG7tI6DzHDZV79_V1i5hkYcevs"  # Вставь сюда свой API-ключ для Google Books API
+OBSIDIAN_VAULT_PATH = os.getenv("OBSIDIAN_VAULT_PATH_BOOK")  # Укажи путь к своей папке Obsidian
+GOOGLE_BOOKS_API_KEY = os.getenv("GOOGLE_BOOKS_API_KEY")  # Вставь сюда свой API-ключ для Google Books API
 
-# Функция для перевода на английский
+
+
+sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
+
 # Функция для перевода на английский
 def translate_to_english(text):
     try:
@@ -116,6 +125,9 @@ cover: {cover_url}
 
 ## Описание
 {description}
+
+[[Рекомендации]]
+[[Библиотека]]
 """
 
 
