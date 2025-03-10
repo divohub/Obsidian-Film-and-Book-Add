@@ -22,6 +22,15 @@ print(TMDB_API_KEY)
 sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
 
 
+# Функция для очистки названия
+def clean_filename(title):
+    # Удаляем все символы, кроме букв, цифр, пробелов и дефисов
+    cleaned_title = re.sub(r'[^\w\s-]', '', title)
+    # Заменяем пробелы на подчёркивания (опционально)
+    # cleaned_title = cleaned_title.replace(" ", "_")
+    return cleaned_title
+
+
 # Функция для перевода на английский
 def translate_to_english(text):
     try:
@@ -39,6 +48,12 @@ def search_tmdb(title, year=None):
     response = requests.get(url)
     data = response.json()
     if data.get("results"):
+        if year:
+            for movie in data["results"]:
+                release_date = movie.get("release_date", "")
+                if release_date.startswith(str(year)):
+                    return movie
+                
         return data["results"][0]  # Возвращаем первый результат
     return None
 
@@ -162,10 +177,14 @@ cover: {poster_url}
 
 ## Описание
 {description}
+
+### References
+
+[[Рекомендации]]
 """
 
     # Сохраняем файл в папке Obsidian
-    file_name = f"{title}.md"
+    file_name = f"{clean_filename(title)}.md"
     file_path = os.path.join(OBSIDIAN_VAULT_PATH, file_name)
     
     with open(file_path, "w", encoding="utf-8") as f:

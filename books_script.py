@@ -126,6 +126,8 @@ cover: {cover_url}
 ## Описание
 {description}
 
+### References
+
 [[Рекомендации]]
 [[Библиотека]]
 """
