@@ -149,6 +149,8 @@ def main():
     else:
         if not args.title:
             raise ValueError ("Не указано название фильма или сериала. Используйте --title или --clipboard.")
+        title = args.title
+        year = args.year
 
 
 
@@ -161,7 +163,7 @@ def main():
         if not data:
             print("🔍 Фильм не найден. Пробуем транслитерировать название...")
             transliterated_title = translit(title, 'ru', reversed=True)  # Транслитерация
-            print(f"Транслитерированное название: {transliterated_title}")
+            print(f"Транслитерированное название: {transliterated_title}") 
             data = search_tmdb(transliterated_title, year, content_type)
 
             # Если фильм не найден, пробуем перевести и поискать снова
@@ -217,6 +219,7 @@ genre: {", ".join(genre['name'] for genre in genres) if genres else "Жанр н
 description: {description}
 type: {content_type}
 cover: {poster_url}
+watched: false
 ---
 
 # {title}
