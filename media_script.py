@@ -8,7 +8,7 @@ import os
 import re
 from deep_translator import GoogleTranslator
 from transliterate import translit
-import logging
+from logger import setup_logger
 
 
 load_dotenv()
@@ -19,18 +19,10 @@ OBSIDIAN_VAULT_PATH = os.getenv("OBSIDIAN_VAULT_PATH_MOVIE")  # Укажи пу�
 TMDB_API_KEY = os.getenv("TMDB_API_KEY")  # Вставь свой API-ключ для TMDb в .env
 
 
-logging.basicConfig(
-    level=logging.INFO,  # уровень логирования (DEBUG, INFO, WARNING, ERROR, CRITICAL)
-    format='%(asctime)s [%(levelname)s] %(message)s',  # формат вывода
-    datefmt='%Y-%m-%d %H:%M:%S'  # формат даты и времени
-)
-
-
-
+# Настройка логгирования
 sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
 
-
-
+logging = setup_logger(log_file="script.log")
 
 # Функция для очистки названия
 def clean_filename(title):
@@ -182,11 +174,11 @@ def main():
 
         title = re.sub(r"\b(19\d{2}|20\d{2})\b", "", clipboard_text).strip()
 
-    if not args.title:
+    if not args.clipboard:
         title = get_input(f"{content_type}_title")
             
         
-    if not args.year:
+    if not args.clipboard:
         year = get_input("year")
 
     else :
@@ -288,7 +280,7 @@ watched: false
         with open(file_path, "w", encoding="utf-8") as f:
             f.write(md_template)
         
-        logging.info(f"✅ Файл {file_name} создан в папке Obsidian!")
+        logging.info(f"✅ File {file_name} создан в папке Obsidian!")
     else:
         logging.error("❌ Ошибка: Фильм не найден. Проверь название.")
 
