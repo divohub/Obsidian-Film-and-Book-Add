@@ -8,6 +8,7 @@ import os
 import re
 from deep_translator import GoogleTranslator
 from transliterate import translit
+import logging
 
 
 load_dotenv()
@@ -17,7 +18,13 @@ load_dotenv()
 OBSIDIAN_VAULT_PATH = os.getenv("OBSIDIAN_VAULT_PATH_MOVIE")  # Укажи путь к своей папке Obsidian .env
 TMDB_API_KEY = os.getenv("TMDB_API_KEY")  # Вставь свой API-ключ для TMDb в .env
 
-print(TMDB_API_KEY)
+
+logging.basicConfig(
+    level=logging.INFO,  # уровень логирования (DEBUG, INFO, WARNING, ERROR, CRITICAL)
+    format='%(asctime)s [%(levelname)s] %(message)s',  # формат вывода
+    datefmt='%Y-%m-%d %H:%M:%S'  # формат даты и времени
+)
+
 
 
 sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
@@ -93,6 +100,34 @@ def is_russian(text):
     # Проверяем, есть ли в тексте кириллица
     return any('\u0400' <= char <= '\u04FF' for char in text)
 
+
+def get_input_text(key):
+    input_texts = {
+        "movie_title": "Введите название фильма",
+        "tv_title": "Введите название сериала",
+        "year": "Ввидете год выпуска",
+    }
+    if key in input_texts:
+        return input_texts[key], True
+    else:
+        return
+    
+
+def get_input(key):
+    user_input_text, exists = get_input_text(key)
+    if not exists:
+        raise ValueError(f"Неизвестный ключ: {key}")
+    while True:
+        try:
+            user_input = input(f"{user_input_text}: ").strip()
+            if not user_input: raise ValueError
+            break
+        except ValueError:
+            logging.error(f"{key} не может быть пустым.")
+        except KeyboardInterrupt:
+            logging.info("Выход из программы")
+    return user_input
+
 # Функция для поиска года в тексте
 def extract_year(text):
     # Ищем год в формате YYYY
@@ -133,7 +168,7 @@ def main():
     else:
         content_type = input("Введите тип контента (movie/tv): ").strip().lower()
         while content_type not in ["movie", "tv"]:
-            print("Некорректный ввод. Пожалуйста, введите 'movie' или 'tv'.")
+            logging.error("Некорректный ввод. Пожалуйста, введите 'movie' или 'tv'.")
             content_type = input("Введите тип контента (movie/tv): ").strip().lower()
 
 
@@ -146,35 +181,41 @@ def main():
 
         title = re.sub(r"\b(19\d{2}|20\d{2})\b", "", clipboard_text).strip()
 
-    else:
-        if not args.title:
-            raise ValueError ("Не указано название фильма или сериала. Используйте --title или --clipboard.")
-        title = args.title
-        year = args.year
+    if not args.title:
+        title = get_input(f"{content_type}_title")
+            
+        
+    if not args.year:
+        year = get_input("year")
+
+    else :
+        ValueError("year должен быть int")    
+  
+
 
 
 
     # Проверяем, на каком языке название
     if is_russian(title):
-        print("🔍 Название на русском. Пробуем найти фильм по оригинальному названию...")
+        logging.info("🔍 Название на русском. Пробуем найти фильм по оригинальному названию...")
         data = search_tmdb(title, year, content_type)
 
         # Если фильм не найден, пробуем транслитерировать и поискать снова
         if not data:
-            print("🔍 Фильм не найден. Пробуем транслитерировать название...")
+            logging.info("🔍 Фильм не найден. Пробуем транслитерировать название...")
             transliterated_title = translit(title, 'ru', reversed=True)  # Транслитерация
-            print(f"Транслитерированное название: {transliterated_title}") 
+            logging.info(f"Транслитерированное название: {transliterated_title}") 
             data = search_tmdb(transliterated_title, year, content_type)
 
             # Если фильм не найден, пробуем перевести и поискать снова
             if not data:
-                print("🔍 Фильм не найден. Пробуем перевести название на английский...")
+                logging.info("🔍 Фильм не найден. Пробуем перевести название на английский...")
                 translated_title = translate_to_english(title)
                 if translated_title:
                     print(f"Перевод названия: {translated_title}")
                     data = search_tmdb(translated_title, year, content_type)
     else:
-        print("🔍 Название на английском. Пробуем найти фильм...")
+        logging.info("🔍 Название на английском. Пробуем найти фильм...")
         data = search_tmdb(title, year, content_type)
 
     # Если данные найдены, создаём Markdown-файл
@@ -246,9 +287,9 @@ watched: false
         with open(file_path, "w", encoding="utf-8") as f:
             f.write(md_template)
         
-        print(f"✅ Файл {file_name} создан в папке Obsidian!")
+        logging.info(f"✅ Файл {file_name} создан в папке Obsidian!")
     else:
-        print("❌ Ошибка: Фильм не найден. Проверь название.")
+        logging.error("❌ Ошибка: Фильм не найден. Проверь название.")
 
 if __name__ == "__main__":
     main()
