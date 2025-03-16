@@ -103,29 +103,32 @@ def is_russian(text):
 
 def get_input_text(key):
     input_texts = {
-        "movie_title": "Введите название фильма",
-        "tv_title": "Введите название сериала",
-        "year": "Ввидете год выпуска",
+        "content_type": ("Введите тип контента (movie/tv)", "Тип контента должен быть movie или tv"),
+        "movie_title": ("Введите название фильма", "Название фильма не может быть пустым"),
+        "tv_title": ("Введите название сериала", "Название сериала не может быть пустым"),
+        "year": ("Ввидете год выпуска", "Год выпуска должен быть числом"),
     }
     if key in input_texts:
-        return input_texts[key], True
+        return input_texts[key][0], input_texts[key][1], True
     else:
-        return
+        return None,"Неизвестный ключ", False
     
 
 def get_input(key):
-    user_input_text, exists = get_input_text(key)
+    user_input_text, error, exists = get_input_text(key)
     if not exists:
-        raise ValueError(f"Неизвестный ключ: {key}")
+        raise ValueError(f"Неизвестный ключ: {key}") 
     while True:
         try:
             user_input = input(f"{user_input_text}: ").strip()
-            if not user_input: raise ValueError
+            if key == "content_type" and user_input not in ["movie", "tv"]: raise ValueError
+            if key!="year" and not user_input: raise ValueError
             break
         except ValueError:
-            logging.error(f"{key} не может быть пустым.")
+            logging.error(error)
         except KeyboardInterrupt:
             logging.info("Выход из программы")
+            sys.exit(1)
     return user_input
 
 # Функция для поиска года в тексте
@@ -166,10 +169,8 @@ def main():
     elif args.tv:
         content_type = "tv"
     else:
-        content_type = input("Введите тип контента (movie/tv): ").strip().lower()
-        while content_type not in ["movie", "tv"]:
-            logging.error("Некорректный ввод. Пожалуйста, введите 'movie' или 'tv'.")
-            content_type = input("Введите тип контента (movie/tv): ").strip().lower()
+        content_type = get_input("content_type")
+ 
 
 
     if args.clipboard:
