@@ -15,7 +15,7 @@ load_dotenv()
 
 
 # Конфигурация
-OBSIDIAN_VAULT_PATH = os.getenv("OBSIDIAN_VAULT_PATH_MOVIE")  # Укажи путь к своей папке Obsidian .env
+OBSIDIAN_VAULT_PATH = os.getenv("OBSIDIAN_VAULT_PATH_MEDIA")  # Укажи путь к своей папке Obsidian .env
 TMDB_API_KEY = os.getenv("TMDB_API_KEY")  # Вставь свой API-ключ для TMDb в .env
 
 
