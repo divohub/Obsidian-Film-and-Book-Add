@@ -1,0 +1,1 @@
+requests pyperclip deep-translator transliterate

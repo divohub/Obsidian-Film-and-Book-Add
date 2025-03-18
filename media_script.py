@@ -24,9 +24,6 @@ sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
 
 logging = setup_logger(log_file="script.log")
 
-
-
-
 # Функция для очистки названия
 def clean_filename(title):
     # Удаляем все символы, кроме букв, цифр, пробелов и дефисов
@@ -187,8 +184,6 @@ def main():
     else :
         ValueError("year должен быть int")    
   
-
-
 
 
     # Проверяем, на каком языке название
