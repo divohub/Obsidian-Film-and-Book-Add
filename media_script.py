@@ -24,6 +24,9 @@ sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
 
 logging = setup_logger(log_file="script.log")
 
+
+
+
 # Функция для очистки названия
 def clean_filename(title):
     # Удаляем все символы, кроме букв, цифр, пробелов и дефисов
@@ -98,7 +101,7 @@ def get_input_text(key):
         "content_type": ("Введите тип контента (movie/tv)", "Тип контента должен быть movie или tv"),
         "movie_title": ("Введите название фильма", "Название фильма не может быть пустым"),
         "tv_title": ("Введите название сериала", "Название сериала не может быть пустым"),
-        "year": ("Ввидете год выпуска", "Год выпуска должен быть числом"),
+        "year": ("Введите год выпуска", "Год выпуска должен быть числом"),
     }
     if key in input_texts:
         return input_texts[key][0], input_texts[key][1], True
@@ -245,38 +248,30 @@ def main():
         # Добавляем обложку, если она есть
         poster_md = f"![Постер]({poster_url})" if poster_url else ""
 
-        md_template = f"""---
-title: {title}
-year: {year}
-director: {", ".join(directors) if directors else "Режиссёр неизвестен"}
-genre: {", ".join(genre['name'] for genre in genres) if genres else "Жанр неизвестен"}
-description: {description}
-type: {content_type}
-cover: {poster_url}
-watched: false
----
-
-# {title}
-
-{poster_md}
-
-**Год:** [[{year}]]  
-**Режиссёр:** {directors_links}  
-**Актёры:** {actors_links}  
-**Жанр:** {genres_links}  
-
-## Описание
-{description}
-
-### References
-
-[[Рекомендации]]
-"""
-
         # Сохраняем файл в папке Obsidian
         file_name = f"{clean_filename(title)}.md"
         file_path = os.path.join(OBSIDIAN_VAULT_PATH, file_name)
         
+
+
+        with open('md_template.md', 'r', encoding='utf-8') as f:
+            md_template = f.read()
+
+        md_template = md_template.format(
+        title=title,
+        year=year,
+        directors=", ".join(directors) if directors else "Режиссёр неизвестен",
+        genres=", ".join(genre['name'] for genre in genres) if genres else "Жанр неизвестен",
+        description=description,
+        content_type=content_type,
+        poster_url=poster_url,
+        poster_md=poster_md,
+        directors_links=directors_links,
+        actors_links=actors_links,
+        genres_links=genres_links
+        )
+
+
         with open(file_path, "w", encoding="utf-8") as f:
             f.write(md_template)
         

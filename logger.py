@@ -2,7 +2,7 @@ import logging
 import sys
 
 
-def setup_logger(name: str = 'logger', log_file: str = 'script.log') -> logging.Logger:
+def setup_logger(name: str = 'log', log_file: str = 'script.log') -> logging.Logger:
     """
     Настройка логгера.
 
