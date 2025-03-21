@@ -9,7 +9,7 @@ import re
 from deep_translator import GoogleTranslator
 from transliterate import translit
 from logger import setup_logger
-
+from pathlib import Path
 
 load_dotenv()
 
@@ -247,7 +247,8 @@ def main():
         file_name = f"{clean_filename(title)}.md"
         file_path = os.path.join(OBSIDIAN_VAULT_PATH, file_name)
         
-
+        script_dir = Path(__file__).parent
+        os.chdir(script_dir)
 
         with open('md_template.md', 'r', encoding='utf-8') as f:
             md_template = f.read()

@@ -2,3 +2,4 @@
 script.log
 .env copy
 __pycache__/logger.cpython-313.pyc
+import os.py
